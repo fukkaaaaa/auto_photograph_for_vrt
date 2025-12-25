@@ -1,0 +1,1 @@
+# auto_photograph_for_vrt
