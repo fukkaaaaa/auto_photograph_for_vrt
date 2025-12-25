@@ -1,0 +1,10 @@
+# VRTマッピングファイル
+# フォーマット: source_file|test_folder|ios_keyword|android_keyword|test_name
+# source_file: 変更を検出するソースファイル名（例: MainActivity.kt）
+# test_folder: テストフォルダ（未使用の場合は空）
+# ios_keyword: iOS用キーワード（未使用の場合は空）
+# android_keyword: Android用キーワード（未使用の場合は空）
+# test_name: 実行するテストクラス名（例: GreetingScreenTest）
+
+# 例: MainActivity.ktが変更された場合、GreetingScreenTestを実行
+MainActivity.kt|||GreetingScreenTest

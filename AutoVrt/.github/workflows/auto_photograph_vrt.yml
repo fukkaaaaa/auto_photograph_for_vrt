@@ -1,0 +1,279 @@
+name: Auto Android Visual Regression Testing
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+env:
+  GH_TOKEN: ${{ secrets.APP_BOT_GITHUB_TOKENS }}
+
+jobs:
+  auto-android-vrt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.APP_BOT_GITHUB_TOKENS }}
+          fetch-depth: 0
+
+      - name: Skip if VRT image update commit
+        id: check-commit
+        run: |
+          # 最新のコミットメッセージを取得
+          LATEST_COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Latest commit message: $LATEST_COMMIT_MSG"
+          
+          # VRT画像更新のコミットかどうかをチェック
+          if echo "$LATEST_COMMIT_MSG" | grep -q ":green_heart: VRT画像更新"; then
+            echo "⏭️ VRT画像更新のコミットのため、ワークフローをスキップします"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ 通常のコミットのため、ワークフローを実行します"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up JDK 21
+        if: steps.check-commit.outputs.skip != 'true'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        if: steps.check-commit.outputs.skip != 'true'
+        uses: gradle/gradle-build-action@87a9a15658c426a54dd469d4fc7dc1a73ca9d4a6 # v2.10.0
+        with:
+          gradle-version: wrapper
+
+      - name: workaround for detached HEAD
+        if: steps.check-commit.outputs.skip != 'true' && github.event_name == 'pull_request'
+        run: |
+          git checkout ${GITHUB_HEAD_REF#refs/heads/} || git checkout -b ${GITHUB_HEAD_REF#refs/heads/} && git pull origin ${GITHUB_HEAD_REF#refs/heads/}
+
+
+      - name: Check changed files and run VRT tests
+        if: steps.check-commit.outputs.skip != 'true'
+        id: check-and-run-vrt
+        run: |
+          # PRの変更ファイルを取得（マージベースとの差分と、作業ディレクトリの変更も含める）
+          BASE_SHA=$(git merge-base origin/${{ github.base_ref }} HEAD)
+          CHANGED_FILES=$( \
+            { git diff --name-only $BASE_SHA HEAD; \
+              git diff --name-only; \
+              git diff --cached --name-only; } | sort -u | grep -E '\.(kt|ktx)$' || true \
+          )
+          
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # vrt_mapping.txtのすべてのsource_file（一番左のファイル名）を取得
+          MAPPING_FILE=".github/workflows/vrt_mapping.txt"
+          if [ -f "$MAPPING_FILE" ]; then
+            # すべての行の1列目（source_file）を取得し、重複を排除
+            REQUIRED_FILES=$(cut -d'|' -f1 "$MAPPING_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u)
+          
+            echo "Required files from vrt_mapping.txt:"
+            echo "$REQUIRED_FILES"
+          
+            # 1つでもsource_fileが変更ファイルに含まれているかチェック
+            FOUND_FILE=""
+            while IFS= read -r required_file; do
+              if [ -n "$required_file" ]; then
+                if echo "$CHANGED_FILES" | grep -qE "(^|/)$required_file$"; then
+                  if [ -z "$FOUND_FILE" ]; then
+                    FOUND_FILE="$required_file"
+                  else
+                    FOUND_FILE="$FOUND_FILE $required_file"
+                  fi
+                fi
+              fi
+            done <<< "$REQUIRED_FILES"
+          
+            # 1つでも含まれていれば実行、1つも含まれていなければ停止
+            if [ -z "$FOUND_FILE" ]; then
+              echo "⚠️ PRの変更ファイルにvrt_mapping.txtのsource_fileが1つも含まれていません。ワークフローを停止します。"
+              echo "should_stop=true" >> $GITHUB_OUTPUT
+              echo "has_tests=false" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "✅ PRの変更ファイルに以下のsource_fileが含まれています。ワークフローを実行します。"
+              echo "$FOUND_FILE" | tr ' ' '\n'
+              echo "should_stop=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "⚠️ vrt_mapping.txt が見つかりません。"
+            echo "should_stop=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # vrt_mapping.txtを読み込んで、変更ファイルとマッチするテストを実行
+          TEST_NAMES=""
+          
+          if [ -f "$MAPPING_FILE" ]; then
+            while IFS="|" read -r source_file test_folder ios_keyword android_keyword test_name; do
+              # source_fileの前後の空白を削除
+              source_file=$(echo "$source_file" | xargs)
+              test_name=$(echo "$test_name" | xargs)
+          
+              # 変更ファイルにsource_fileが含まれているかチェック（ファイル名のみでマッチ）
+              if echo "$CHANGED_FILES" | grep -qE "(^|/)$source_file$"; then
+                if [ -n "$test_name" ] && [ "$test_name" != "" ]; then
+                  echo "Found matching file: $source_file -> Test: $test_name"
+                  if [ -z "$TEST_NAMES" ]; then
+                    TEST_NAMES="$test_name"
+                  else
+                    # 重複を避ける
+                    if echo "$TEST_NAMES" | grep -qv "$test_name"; then
+                      TEST_NAMES="$TEST_NAMES $test_name"
+                    fi
+                  fi
+                fi
+              fi
+            done < "$MAPPING_FILE"
+          fi
+          
+          if [ -n "$TEST_NAMES" ]; then
+            echo "test_names=$TEST_NAMES" >> $GITHUB_OUTPUT
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+            echo "Tests to run: $TEST_NAMES"
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+            echo "No matching tests found for changed files"
+          fi
+
+      - name: Run Android VRT Tests
+        id: run-vrt-tests
+        if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
+        run: |
+          chmod +x .github/workflows/auto_android_vrt.sh
+          
+          TEST_NAMES="${{ steps.check-and-run-vrt.outputs.test_names }}"
+          
+          # 各テストを実行
+          for test_name in $TEST_NAMES; do
+            echo "Running VRT test: $test_name"
+            .github/workflows/auto_android_vrt.sh "$test_name" || true
+          done
+        continue-on-error: true
+
+      - name: Count VRT Images
+        id: count-images
+        if: always() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        run: |
+          SCREENSHOTS_DIR="app/__screenshots__"
+          EXPECTED_DIR="app/.reg/expected"
+          
+          if [ -d "$SCREENSHOTS_DIR" ]; then
+            TOTAL=$(find "$SCREENSHOTS_DIR" -name "*.png" | wc -l)
+            echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          else
+            echo "total=0" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -d "$EXPECTED_DIR" ]; then
+            EXPECTED=$(find "$EXPECTED_DIR" -name "*.png" | wc -l)
+            echo "expected=$EXPECTED" >> $GITHUB_OUTPUT
+          else
+            echo "expected=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for PNG changes and commit
+        if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
+        run: |
+          # Git設定
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # expectedディレクトリ内のPNGファイルの変更を確認
+          if [ -d "app/.reg/expected" ]; then
+            # 変更されたPNGファイルを検出
+            PNG_CHANGES=$(git status --porcelain app/.reg/expected/ 2>/dev/null | grep -E '\.png$' || true)
+          
+            if [ -n "$PNG_CHANGES" ]; then
+              echo "PNG changes detected:"
+              echo "$PNG_CHANGES"
+          
+              # PNGファイルをステージング
+              git add app/.reg/expected/*.png
+          
+              # 変更がある場合のみコミット
+              if ! git diff --staged --quiet; then
+                git commit -m ":green_heart: VRT画像更新 [skip ci]"
+                git push origin ${{ github.head_ref }}
+                echo "✅ PNGファイルをコミット・プッシュしました"
+                echo "pushed=true" >> $GITHUB_OUTPUT
+              else
+                echo "⚠️ ステージングされた変更がありません"
+                echo "pushed=false" >> $GITHUB_OUTPUT
+              fi
+            else
+            echo "ℹ️ PNGファイルの変更は検出されませんでした"
+            echo "pushed=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "ℹ️ app/.reg/expected ディレクトリが存在しません"
+            echo "pushed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment VRT Summary on PR
+        if: always() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        env:
+          VRT_TEST_CONCLUSION: ${{ steps.run-vrt-tests.conclusion }}
+          TOTAL_IMAGES: ${{ steps.count-images.outputs.total }}
+          EXPECTED_IMAGES: ${{ steps.count-images.outputs.expected }}
+          GH_TOKEN: ${{ env.GH_TOKEN }}
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          
+          COMMENT_BODY="### Android VRTレポート\n\n"
+          
+          # ステータスメッセージ
+          if [ "$VRT_TEST_CONCLUSION" = "failure" ]; then
+            STATUS="🔴VRTテストの実行に失敗しました！"
+            COMMENT_BODY+="VRTテストの実行中にエラーが発生しました。ログを確認してください。\n\n"
+          elif [ "$VRT_TEST_CONCLUSION" = "skipped" ]; then
+            STATUS="⚠️VRTテストがスキップされました！"
+          elif [ "$VRT_TEST_CONCLUSION" = "cancelled" ]; then
+            STATUS="⚠️VRTテストがキャンセルされました！"
+          else
+            STATUS="🟢VRTテストが完了しました！"
+            COMMENT_BODY+="生成画像数: $TOTAL_IMAGES, 正解画像数: $EXPECTED_IMAGES \n\n"
+          fi
+          
+          COMMENT_BODY+="$STATUS"
+          
+          # コメントをPRに投稿
+          echo -e "$COMMENT_BODY" | gh pr comment $PR_NUMBER --body-file -
+
+      - name: Upload VRT Screenshots as Artifact
+        if: failure() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-VRT-Screenshots
+          path: |
+            app/__screenshots__/**
+            app/.reg/expected/**
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Comment VRT Failure Details on PR
+        if: failure() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts"
+          
+          COMMENT_BODY="### VRTテスト失敗詳細 \n\n"
+          COMMENT_BODY+="**[スクリーンショット画像ダウンロード]($ARTIFACT_URL)**\n\n"
+          COMMENT_BODY+="テストの実行ログを確認して、失敗原因を特定してください。\n"
+          
+          # コメントをPRに投稿
+          echo -e "$COMMENT_BODY" | gh pr comment $PR_NUMBER --body-file -
+        env:
+          GH_TOKEN: ${{ env.GH_TOKEN }}
+

@@ -1,0 +1,22 @@
+{
+  "core": {
+    "workingDir": "app/.reg",
+    "actualDir": "app/__screenshots__",
+    "thresholdRate": 0.015,
+    "addIgnore": true,
+    "ximgdiff": {
+      "invocationType": "client"
+    }
+  },
+  "plugins": {
+    "reg-keygen-git-hash-plugin": true,
+    "reg-notify-github-plugin": {
+      "clientId": "Mzc1NLQwNjMy009NTy/Wzc4t0E0sKNA3MQOKmhub67vlJOZm5qXn6xalJucnZ+RnlwIA",
+      "prComment": true,
+      "prCommentBehavior": "default",
+      "setCommitStatus": false,
+      "shortDescription": true
+    }
+  }
+}
+
