@@ -107,6 +107,9 @@ jobs:
           # まだ見つからない場合、メインブランチから取得を試みる
           if [ -z "$MAPPING_FILE" ]; then
             echo "現在のブランチでマッピングファイルが見つかりません。mainブランチから取得を試みます"
+            # ディレクトリが存在しない場合は作成
+            mkdir -p .github/workflows
+            # mainブランチからファイルを取得
             if git show origin/main:.github/workflows/vrt_mapping.txt > .github/workflows/vrt_mapping.txt 2>/dev/null; then
               MAPPING_FILE=".github/workflows/vrt_mapping.txt"
               echo "✅mainブランチからvrt_mapping.txtを取得しました"
