@@ -205,7 +205,7 @@ jobs:
           
           if [ ! -f ".github/workflows/auto_photograph_vrt.sh" ]; then
             echo "auto_photograph_vrt.shが見つかりません。メインブランチから取得を試みます"
-            if git show origin/main:.github/workflows/auto_photograph_vrt.sh > .github/workflows/auto_photograph_vrt.sh 2>/dev/null/; then
+            if git show origin/main:.github/workflows/auto_photograph_vrt.sh > .github/workflows/auto_photograph_vrt.sh 2>/dev/null; then
               echo "✅メインブランチからauto_photograph_vrt.shを取得しました"
             else
               echo "mainブランチからも取得できませんでした"
