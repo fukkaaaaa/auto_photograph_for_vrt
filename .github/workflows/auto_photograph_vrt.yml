@@ -55,7 +55,13 @@ jobs:
       - name: workaround for detached HEAD
         if: steps.check-commit.outputs.skip != 'true' && github.event_name == 'pull_request'
         run: |
-          git checkout ${GITHUB_HEAD_REF#refs/heads/} || git checkout -b ${GITHUB_HEAD_REF#refs/heads/} && git pull origin ${GITHUB_HEAD_REF#refs/heads/}
+          BRANCH_NAME=${GITHUB_HEAD_REF#refs/heads/}
+          if git checkout "$BRANCH_NAME" 2>/dev/null; then
+            git pull origin "$BRANCH_NAME" || true
+          else 
+            git checkout -b "$BRANCH_NAME"
+            git pull origin "$BRANCH_NAME" || true
+          fi
 
 
       - name: Check changed files and run VRT tests
@@ -75,6 +81,9 @@ jobs:
           
           # vrt_mapping.txtのすべてのsource_file（一番左のファイル名）を取得
           MAPPING_FILE="$GITHUB_WORKSPACE/.github/workflows/vrt_mapping.txt"
+          if [ ! -f "$MAPPING_FILE" ]; then
+            MAPPING_FILE=".github/workflows/vrt_mapping.txt"
+          fi
           if [ -f "$MAPPING_FILE" ]; then
             # すべての行の1列目（source_file）を取得し、重複を排除
             REQUIRED_FILES=$(cut -d'|' -f1 "$MAPPING_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u)
