@@ -116,7 +116,7 @@ jobs:
           TEST_NAMES=""
           
           if [ -f "$MAPPING_FILE" ]; then
-            while IFS="|" read -r source_file test_folder ios_keyword android_keyword test_name; do
+            while IFS="|" read -r source_file test_name; do
               # source_fileの前後の空白を削除
               source_file=$(echo "$source_file" | xargs)
               test_name=$(echo "$test_name" | xargs)
