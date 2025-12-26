@@ -74,7 +74,7 @@ jobs:
           echo "$CHANGED_FILES"
           
           # vrt_mapping.txtのすべてのsource_file（一番左のファイル名）を取得
-          MAPPING_FILE=".github/workflows/vrt_mapping.txt"
+          MAPPING_FILE="$GITHUB_WORKSPACE/.github/workflows/vrt_mapping.txt"
           if [ -f "$MAPPING_FILE" ]; then
             # すべての行の1列目（source_file）を取得し、重複を排除
             REQUIRED_FILES=$(cut -d'|' -f1 "$MAPPING_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort -u)
