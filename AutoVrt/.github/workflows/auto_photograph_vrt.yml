@@ -5,7 +5,7 @@ on:
     types: [opened, reopened]
 
 env:
-  GH_TOKEN: ${{ secrets.APP_BOT_GITHUB_TOKENS }}
+  GH_TOKEN: ${{ secrets.REPO_GITHUB_TOKENS }}
 
 jobs:
   auto-android-vrt:
@@ -20,7 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.APP_BOT_GITHUB_TOKENS }}
+          token: ${{ secrets.REPO_GITHUB_TOKENS }}
           fetch-depth: 0
 
       - name: Skip if VRT image update commit
