@@ -149,13 +149,19 @@ jobs:
             fi
           else
             echo "⚠️ vrt_mapping.txt が見つかりません。"
+            echo "デバッグ情報"
+            echo "現在のディレクトリ：$(pwd)"
+            echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+            echo "現在のブランチ： $(git branch --show-current 2>/dev/null || echo 'detached HEAD')"
+            echo ".github/workflows/ の内容："
+            ls -la .github/workflows/ 2>/dev/null || echo "   ディレクトリが存在しません"
             echo "should_stop=false" >> $GITHUB_OUTPUT
           fi
           
           # vrt_mapping.txtを読み込んで、変更ファイルとマッチするテストを実行
           TEST_NAMES=""
           
-          if [ -f "$MAPPING_FILE" ]; then
+          if [ -n "$MAPPING_FILE" ] && [ -f "$MAPPING_FILE" ]; then
             while IFS="|" read -r source_file test_name; do
               # source_fileの前後の空白を削除
               source_file=$(echo "$source_file" | xargs)
