@@ -200,6 +200,19 @@ jobs:
         id: run-vrt-tests
         if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
         run: |
+          # 必要なスクリプトファイルが存在しない場合はメインブランチから取得
+          mkdir -p .github/workflows
+          
+          if [ ! -f ".github/workflows/auto_android_vrt.sh" ]; then
+            echo "auto_android_vrt.shが見つかりません。メインブランチから取得を試みます"
+            if git show origin/main:.github/workflows/auto_android_vrt.sh > .github/workflows/auto_android_vrt.sh 2>/dev/null/; then
+              echo "✅メインブランチからauto_android_vrt.shを取得しました"
+            else
+              echo "mainブランチからも取得できませんでした"
+              exit 1
+            fi
+          fi
+          
           chmod +x .github/workflows/auto_android_vrt.sh
           
           TEST_NAMES="${{ steps.check-and-run-vrt.outputs.test_names }}"
