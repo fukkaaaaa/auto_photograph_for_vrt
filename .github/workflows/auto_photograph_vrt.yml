@@ -196,7 +196,8 @@ jobs:
             echo "No matching tests found for changed files"
           fi
 
-      - name: Run Android VRT Tests
+      - name: Run VRT Tests
+        working-directory: .
         id: run-vrt-tests
         if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
         run: |
