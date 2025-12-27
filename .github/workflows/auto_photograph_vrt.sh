@@ -29,8 +29,8 @@ fi
 cd "$PROJECT_ROOT" || exit 1
 echo "プロジェクトルート: $PROJECT_ROOT"
 
-TEST_DIR="androidApp/src/test/kotlin/mu/eggs/recochoku/player"
-PACKAGE="mu.eggs.recochoku.player"
+TEST_DIR="app/src/test/java/com/example/autovrt"
+PACKAGE="com.example.autovrt"
 
 # テスト名の入力（引数または標準入力から取得）
 if [ -n "$1" ]; then
