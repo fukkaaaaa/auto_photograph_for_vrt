@@ -46,6 +46,13 @@ if [ -z "$input_test_name" ]; then
     exit 1
 fi
 
+echo "=== TEST_DIR 内のファイル一覧 ==="
+ls -1 "$TEST_DIR"
+
+for test_file in "$TEST_DIR"/*Test*.kt; do
+    echo "検出ファイル: $test_file"
+done
+
 # テストファイルを検索
 found_test=""
 test_class_name=""
