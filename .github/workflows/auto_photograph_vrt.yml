@@ -204,13 +204,8 @@ jobs:
           mkdir -p .github/workflows
           
           if [ ! -f ".github/workflows/auto_photograph_vrt.sh" ]; then
-            echo "auto_photograph_vrt.shが見つかりません。メインブランチから取得を試みます"
-            if git show origin/main:.github/workflows/auto_photograph_vrt.sh > .github/workflows/auto_photograph_vrt.sh 2>/dev/null; then
-              echo "✅メインブランチからauto_photograph_vrt.shを取得しました"
-            else
-              echo "mainブランチからも取得できませんでした"
-              exit 1
-            fi
+            echo "❌ auto_photograph_vrt.sh がこのブランチに存在しません"
+            exit 1
           fi
           
           chmod +x .github/workflows/auto_photograph_vrt.sh
