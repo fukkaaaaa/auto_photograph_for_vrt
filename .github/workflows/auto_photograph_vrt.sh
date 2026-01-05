@@ -16,13 +16,11 @@ find_project_root() {
     return 1
 }
 
-# 現在の作業ディレクトリからプロジェクトルートを探す
-CURRENT_DIR="$(pwd)"
-PROJECT_ROOT=$(find_project_root "$CURRENT_DIR")
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../AutoVrt" && pwd)"
 
-if [ -z "$PROJECT_ROOT" ]; then
-    echo "エラー: プロジェクトルート（gradlewがあるディレクトリ）が見つかりませんでした"
-    echo "プロジェクトディレクトリ内で実行してください"
+if [ ! -f "$PROJECT_ROOT/gradlew" ]; then
+    echo "エラー: gradlew が $PROJECT_ROOT に見つかりませんでした"
     exit 1
 fi
 
