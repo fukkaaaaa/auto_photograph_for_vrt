@@ -1,4 +1,4 @@
-name: Auto Android Visual Regression Testing
+name: Auto Take Screenshots
 
 on:
   pull_request:
@@ -268,7 +268,7 @@ jobs:
               # 変更がある場合のみコミット
               if ! git diff --staged --quiet; then
                 # コミットするPNGファイル名を取得
-                COMMITTED_IMAGES=$(git diff --staged --named-only | grep -E '\.png$' | sed 's|AutoVrt/app/__screenshots__/||' | tr '\n' ',' | sed 's/,$//')
+                COMMITTED_IMAGES=$(git diff --staged --name-only | grep -E '\.png$' | sed 's|AutoVrt/app/__screenshots__/||' | tr '\n' ',' | sed 's/,$//')
                 echo "committed_images=$COMMITTED_IMAGES" >> $GITHUB_OUTPUT
           
                 git commit -m ":green_heart: VRT画像更新 [skip ci]"
