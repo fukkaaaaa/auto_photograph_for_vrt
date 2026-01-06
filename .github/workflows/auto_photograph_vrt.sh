@@ -206,7 +206,7 @@ fi
 # 成功したテスト関数内のPNGファイルのみをコピー
 if [ ${#passed_tests[@]} -gt 0 ]; then
     screenshots_dir="$PROJECT_ROOT/app/__screenshots__"
-    expected_dir="$PROJECT_ROOT/app/.reg/expected"
+    expected_dir="$PROJECT_ROOT/app/__screenshots__"
 
     # expectedディレクトリが存在しない場合は作成
     mkdir -p "$expected_dir"
