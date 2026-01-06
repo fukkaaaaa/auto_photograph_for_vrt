@@ -29,7 +29,7 @@ fun FirstScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "First Screen",
+                text = "HOGEHOGE",
                 modifier = Modifier.padding(bottom = 32.dp)
             )
             Button(onClick = onNavigateToSecond) {
