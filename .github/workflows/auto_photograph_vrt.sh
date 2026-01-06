@@ -28,7 +28,7 @@ cd "$PROJECT_ROOT" || exit 1
 echo "プロジェクトルート: $PROJECT_ROOT"
 
 # gradlewに実行権限付与
-if [ -f "gradlew"]; then
+if [ -f "gradlew" ]; then
   chmod +x gradlew
   echo "✅gradlewに権限を付与しました"
 fi
