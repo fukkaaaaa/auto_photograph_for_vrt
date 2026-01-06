@@ -23,37 +23,19 @@ jobs:
           token: ${{ secrets.REPO_GITHUB_TOKENS }}
           fetch-depth: 0
 
-      - name: Skip if VRT image update commit
-        id: check-commit
-        run: |
-          # 最新のコミットメッセージを取得
-          LATEST_COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "Latest commit message: $LATEST_COMMIT_MSG"
-          
-          # VRT画像更新のコミットかどうかをチェック
-          if echo "$LATEST_COMMIT_MSG" | grep -q ":green_heart: VRT画像更新"; then
-            echo "⏭️ VRT画像更新のコミットのため、ワークフローをスキップします"
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "✅ 通常のコミットのため、ワークフローを実行します"
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Set up JDK 21
-        if: steps.check-commit.outputs.skip != 'true'
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Setup Gradle
-        if: steps.check-commit.outputs.skip != 'true'
         uses: gradle/gradle-build-action@87a9a15658c426a54dd469d4fc7dc1a73ca9d4a6 # v2.10.0
         with:
           gradle-version: wrapper
 
       - name: workaround for detached HEAD
-        if: steps.check-commit.outputs.skip != 'true' && github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request'
         run: |
           BRANCH_NAME=${GITHUB_HEAD_REF#refs/heads/}
           echo "ブランチ切り替え： $BRANCH_NAME"
@@ -80,7 +62,6 @@ jobs:
 
 
       - name: Check changed files and run VRT tests
-        if: steps.check-commit.outputs.skip != 'true'
         id: check-and-run-vrt
         run: |
           # PRの変更ファイルを取得（マージベースとの差分と、作業ディレクトリの変更も含める）
@@ -198,7 +179,7 @@ jobs:
 
       - name: Run VRT Tests
         id: run-vrt-tests
-        if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
+        if: steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
         run: |
           mkdir -p .github/workflows
           
@@ -226,7 +207,7 @@ jobs:
 
       - name: Count VRT Images
         id: count-images
-        if: always() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        if: always() && steps.check-and-run-vrt.outputs.should_stop != 'true'
         run: |
           SCREENSHOTS_DIR="app/__screenshots__"
           EXPECTED_DIR="app/__screenshots__"
@@ -247,7 +228,7 @@ jobs:
 
       - name: Check for PNG changes and commit
         id: commit-png
-        if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
+        if: steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
         run: |
           # Git設定
           git config --local user.name "github-actions[bot]"
@@ -292,7 +273,7 @@ jobs:
           fi
 
       - name: Comment VRT Summary on PR
-        if: always() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        if: always() && steps.check-and-run-vrt.outputs.should_stop != 'true'
         env:
           VRT_TEST_CONCLUSION: ${{ steps.run-vrt-tests.conclusion }}
           COMMITTED_IMAGES: ${{ steps.commit-png.outputs.committed_images }}
@@ -328,7 +309,7 @@ jobs:
           echo -e "$COMMENT_BODY" | gh pr comment $PR_NUMBER --body-file -
 
       - name: Upload VRT Screenshots as Artifact
-        if: failure() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        if: failure() && steps.check-and-run-vrt.outputs.should_stop != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Android-VRT-Screenshots
@@ -338,7 +319,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Comment VRT Failure Details on PR
-        if: failure() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
+        if: failure() && steps.check-and-run-vrt.outputs.should_stop != 'true'
         run: |
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts"
