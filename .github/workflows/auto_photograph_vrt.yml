@@ -200,7 +200,6 @@ jobs:
         id: run-vrt-tests
         if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
         run: |
-          # 必要なスクリプトファイルが存在しない場合はメインブランチから取得
           mkdir -p .github/workflows
           
           if [ ! -f ".github/workflows/auto_photograph_vrt.sh" ]; then
@@ -209,6 +208,12 @@ jobs:
           fi
           
           chmod +x .github/workflows/auto_photograph_vrt.sh
+          
+          # gradlewに実行権限付与
+          if [ -f "AutoVrt/gradlew" ]; then
+            chmod +x AutoVrt/gradlew
+            echo "✅ gradlewに実行権限を付与しました"
+          fi
           
           TEST_NAMES="${{ steps.check-and-run-vrt.outputs.test_names }}"
           
