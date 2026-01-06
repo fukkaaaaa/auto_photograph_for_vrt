@@ -27,6 +27,12 @@ fi
 cd "$PROJECT_ROOT" || exit 1
 echo "プロジェクトルート: $PROJECT_ROOT"
 
+# gradlewに実行権限付与
+if [ -f "gradlew"]; then
+  chmod +x gradlew
+  echo "✅gradlewに権限を付与しました"
+fi
+
 TEST_DIR="app/src/test/java/com/example/autovrt"
 PACKAGE="com.example.autovrt"
 
@@ -97,11 +103,11 @@ full_test_name="$PACKAGE.$test_class_name"
 echo "テストを実行します: $full_test_name"
 echo ""
 
-./gradlew :androidApp:testDevelopDebugUnitTest --tests "$full_test_name"
+./gradlew :app:testDebugUnitTest --tests "$full_test_name"
 TEST_EXIT_CODE=$?
 
 # テスト結果XMLファイルのパス
-test_results_dir="$PROJECT_ROOT/androidApp/build/test-results/testDevelopDebugUnitTest"
+test_results_dir="$PROJECT_ROOT/app/build/test-results/testDebugUnitTest"
 test_result_xml=""
 
 # テスト結果XMLファイルを検索（ファイル名は TEST-${full_test_name}.xml 形式）
@@ -199,8 +205,8 @@ fi
 
 # 成功したテスト関数内のPNGファイルのみをコピー
 if [ ${#passed_tests[@]} -gt 0 ]; then
-    screenshots_dir="$PROJECT_ROOT/androidApp/__screenshots__"
-    expected_dir="$PROJECT_ROOT/androidApp/.reg/expected"
+    screenshots_dir="$PROJECT_ROOT/app/__screenshots__"
+    expected_dir="$PROJECT_ROOT/app/.reg/expected"
 
     # expectedディレクトリが存在しない場合は作成
     mkdir -p "$expected_dir"
