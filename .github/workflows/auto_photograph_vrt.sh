@@ -16,21 +16,25 @@ find_project_root() {
     return 1
 }
 
-# 現在の作業ディレクトリからプロジェクトルートを探す
-CURRENT_DIR="$(pwd)"
-PROJECT_ROOT=$(find_project_root "$CURRENT_DIR")
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../AutoVrt" && pwd)"
 
-if [ -z "$PROJECT_ROOT" ]; then
-    echo "エラー: プロジェクトルート（gradlewがあるディレクトリ）が見つかりませんでした"
-    echo "プロジェクトディレクトリ内で実行してください"
+if [ ! -f "$PROJECT_ROOT/gradlew" ]; then
+    echo "エラー: gradlew が $PROJECT_ROOT に見つかりませんでした"
     exit 1
 fi
 
 cd "$PROJECT_ROOT" || exit 1
 echo "プロジェクトルート: $PROJECT_ROOT"
 
-TEST_DIR="androidApp/src/test/kotlin/mu/eggs/recochoku/player"
-PACKAGE="mu.eggs.recochoku.player"
+# gradlewに実行権限付与
+if [ -f "gradlew" ]; then
+  chmod +x gradlew
+  echo "✅gradlewに権限を付与しました"
+fi
+
+TEST_DIR="app/src/test/java/com/example/autovrt"
+PACKAGE="com.example.autovrt"
 
 # テスト名の入力（引数または標準入力から取得）
 if [ -n "$1" ]; then
@@ -45,6 +49,13 @@ if [ -z "$input_test_name" ]; then
     echo "エラー: テスト名が入力されていません"
     exit 1
 fi
+
+echo "=== TEST_DIR 内のファイル一覧 ==="
+ls -1 "$TEST_DIR"
+
+for test_file in "$TEST_DIR"/*Test*.kt; do
+    echo "検出ファイル: $test_file"
+done
 
 # テストファイルを検索
 found_test=""
@@ -92,11 +103,11 @@ full_test_name="$PACKAGE.$test_class_name"
 echo "テストを実行します: $full_test_name"
 echo ""
 
-./gradlew :androidApp:testDevelopDebugUnitTest --tests "$full_test_name"
+./gradlew :app:testDebugUnitTest --tests "$full_test_name"
 TEST_EXIT_CODE=$?
 
 # テスト結果XMLファイルのパス
-test_results_dir="$PROJECT_ROOT/androidApp/build/test-results/testDevelopDebugUnitTest"
+test_results_dir="$PROJECT_ROOT/app/build/test-results/testDebugUnitTest"
 test_result_xml=""
 
 # テスト結果XMLファイルを検索（ファイル名は TEST-${full_test_name}.xml 形式）
@@ -194,8 +205,8 @@ fi
 
 # 成功したテスト関数内のPNGファイルのみをコピー
 if [ ${#passed_tests[@]} -gt 0 ]; then
-    screenshots_dir="$PROJECT_ROOT/androidApp/__screenshots__"
-    expected_dir="$PROJECT_ROOT/androidApp/.reg/expected"
+    screenshots_dir="$PROJECT_ROOT/app/__screenshots__"
+    expected_dir="$PROJECT_ROOT/app/__screenshots__"
 
     # expectedディレクトリが存在しない場合は作成
     mkdir -p "$expected_dir"
