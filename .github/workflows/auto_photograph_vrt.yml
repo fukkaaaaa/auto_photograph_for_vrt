@@ -229,7 +229,7 @@ jobs:
         if: always() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
         run: |
           SCREENSHOTS_DIR="app/__screenshots__"
-          EXPECTED_DIR="app/.reg/expected"
+          EXPECTED_DIR="app/__screenshots__"
           
           if [ -d "$SCREENSHOTS_DIR" ]; then
             TOTAL=$(find "$SCREENSHOTS_DIR" -name "*.png" | wc -l)
@@ -253,16 +253,16 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
           # expectedディレクトリ内のPNGファイルの変更を確認
-          if [ -d "app/.reg/expected" ]; then
+          if [ -d "app/__screenshots__" ]; then
             # 変更されたPNGファイルを検出
-            PNG_CHANGES=$(git status --porcelain app/.reg/expected/ 2>/dev/null | grep -E '\.png$' || true)
+            PNG_CHANGES=$(git status --porcelain app/__screenshots__/ 2>/dev/null | grep -E '\.png$' || true)
           
             if [ -n "$PNG_CHANGES" ]; then
               echo "PNG changes detected:"
               echo "$PNG_CHANGES"
           
               # PNGファイルをステージング
-              git add app/.reg/expected/*.png
+              git add app/__screenshots__/*.png
           
               # 変更がある場合のみコミット
               if ! git diff --staged --quiet; then
@@ -279,7 +279,7 @@ jobs:
             echo "pushed=false" >> $GITHUB_OUTPUT
             fi
           else
-            echo "ℹ️ app/.reg/expected ディレクトリが存在しません"
+            echo "ℹ️ app/__screenshots__/ ディレクトリが存在しません"
             echo "pushed=false" >> $GITHUB_OUTPUT
           fi
 
@@ -320,7 +320,6 @@ jobs:
           name: Android-VRT-Screenshots
           path: |
             app/__screenshots__/**
-            app/.reg/expected/**
           retention-days: 3
           if-no-files-found: ignore
 
