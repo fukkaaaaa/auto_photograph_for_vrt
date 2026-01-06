@@ -246,6 +246,7 @@ jobs:
           fi
 
       - name: Check for PNG changes and commit
+        id: commit-png
         if: steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true' && steps.check-and-run-vrt.outputs.has_tests == 'true'
         run: |
           # Git設定
@@ -266,6 +267,10 @@ jobs:
           
               # 変更がある場合のみコミット
               if ! git diff --staged --quiet; then
+                # コミットするPNGファイル名を取得
+                COMMITTED_IMAGES=$(git diff --staged --named-only | grep -E '\.png$' | sed 's|AutoVrt/app/__screenshots__/||' | tr '\n' ',' | sed 's/,$//')
+                echo "committed_images=$COMMITTED_IMAGES" >> $GITHUB_OUTPUT
+          
                 git commit -m ":green_heart: VRT画像更新 [skip ci]"
                 git push origin ${{ github.head_ref }}
                 echo "✅ PNGファイルをコミット・プッシュしました"
@@ -273,22 +278,24 @@ jobs:
               else
                 echo "⚠️ ステージングされた変更がありません"
                 echo "pushed=false" >> $GITHUB_OUTPUT
+                echo "committed_images=" >> $GITHUB_OUTPUT
               fi
             else
             echo "ℹ️ PNGファイルの変更は検出されませんでした"
             echo "pushed=false" >> $GITHUB_OUTPUT
+            echo "committed_images=" >> $GITHUB_OUTPUT
             fi
           else
             echo "ℹ️ app/__screenshots__/ ディレクトリが存在しません"
             echo "pushed=false" >> $GITHUB_OUTPUT
+            echo "committed_images=" >> $GITHUB_OUTPUT
           fi
 
       - name: Comment VRT Summary on PR
         if: always() && steps.check-commit.outputs.skip != 'true' && steps.check-and-run-vrt.outputs.should_stop != 'true'
         env:
           VRT_TEST_CONCLUSION: ${{ steps.run-vrt-tests.conclusion }}
-          TOTAL_IMAGES: ${{ steps.count-images.outputs.total }}
-          EXPECTED_IMAGES: ${{ steps.count-images.outputs.expected }}
+          COMMITTED_IMAGES: ${{ steps.commit-png.outputs.committed_images }}
           GH_TOKEN: ${{ env.GH_TOKEN }}
         run: |
           PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
@@ -305,10 +312,17 @@ jobs:
             STATUS="⚠️VRTテストがキャンセルされました！"
           else
             STATUS="🟢VRTテストが完了しました！"
-            COMMENT_BODY+="生成画像数: $TOTAL_IMAGES, 正解画像数: $EXPECTED_IMAGES \n\n"
           fi
           
-          COMMENT_BODY+="$STATUS"
+          COMMENT_BODY+="$STATUS\n\n"
+          
+          # コミットした画像がある場合は表示
+          if [ -n "$COMMITTED_IMAGES" ] && [ "$COMMITTED_IMAGES" != "" ]; then
+            COMMENT_BODY+="**コミットした画像：**\n"
+            # カンマ区切りの画像名を改行区切りに変換して、各行の前に-を追加
+            IMAGE_LIST=$(echo "$COMMITTED_IMAGES" | tr ',' '\n' | sed 's/^/- /')
+            COMMENT_BODY+="$IMAGE_LIST\n"
+          fi
           
           # コメントをPRに投稿
           echo -e "$COMMENT_BODY" | gh pr comment $PR_NUMBER --body-file -
