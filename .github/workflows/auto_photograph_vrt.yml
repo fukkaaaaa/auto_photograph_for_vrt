@@ -253,16 +253,16 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
           # expectedディレクトリ内のPNGファイルの変更を確認
-          if [ -d "app/__screenshots__" ]; then
+          if [ -d "AutoVrt/app/__screenshots__" ]; then
             # 変更されたPNGファイルを検出
-            PNG_CHANGES=$(git status --porcelain app/__screenshots__/ 2>/dev/null | grep -E '\.png$' || true)
+            PNG_CHANGES=$(git status --porcelain AutoVrt/app/__screenshots__/ 2>/dev/null | grep -E '\.png$' || true)
           
             if [ -n "$PNG_CHANGES" ]; then
               echo "PNG changes detected:"
               echo "$PNG_CHANGES"
           
               # PNGファイルをステージング
-              git add app/__screenshots__/*.png
+              git add AutoVrt/app/__screenshots__/*.png
           
               # 変更がある場合のみコミット
               if ! git diff --staged --quiet; then
