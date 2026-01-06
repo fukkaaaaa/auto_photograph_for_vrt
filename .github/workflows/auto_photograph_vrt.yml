@@ -49,17 +49,6 @@ jobs:
             git checkout -b "$BRANCH_NAME"
             git pull origin "$BRANCH_NAME" || true
           fi
-          
-          echo "切り替え後の状態：　$(git branch --show-current 2>/dev/null || echo 'detached HEAD')"
-          echo "vrt_mapping.txtの存在確認"
-          if [ -f ".github/workflows/vrt_mapping.txt" ]; then
-            echo " ✅　.github/workflows/vrt_mapping.txt　が存在します"
-          else
-            echo " mapping.txtが存在しません　"
-            echo " .github/workflows/の内容：" 
-            ls -la .github/workflows/ 2>/dev/null || echo " ディレクトリが存在しません"
-          fi
-
 
       - name: Check changed files and run VRT tests
         id: check-and-run-vrt
@@ -84,20 +73,6 @@ jobs:
               break
             fi
           done
-          
-          # まだ見つからない場合、メインブランチから取得を試みる
-          if [ -z "$MAPPING_FILE" ]; then
-            echo "現在のブランチでマッピングファイルが見つかりません。mainブランチから取得を試みます"
-            # ディレクトリが存在しない場合は作成
-            mkdir -p .github/workflows
-            # mainブランチからファイルを取得
-            if git show origin/main:.github/workflows/vrt_mapping.txt > .github/workflows/vrt_mapping.txt 2>/dev/null; then
-              MAPPING_FILE=".github/workflows/vrt_mapping.txt"
-              echo "✅mainブランチからvrt_mapping.txtを取得しました"
-            else
-              echo "mainブランチからも取得できませんでした"
-            fi
-          fi
           
           if [ -n "$MAPPING_FILE" ] && [ -f "$MAPPING_FILE" ]; then
             # すべての行の1列目（source_file）を取得し、重複を排除
